@@ -1,0 +1,10 @@
+{
+  "name": "nlw-server",
+  "version": "1.0.0",
+  "description": "Backend of application",
+  "main": "index.js",
+  "repository": "https://github.com/Giancarl021/Next-Level-Week-01",
+  "author": "Giancarlo Fontela da Luz <gian.f.luz@hotmail.com>",
+  "license": "MIT",
+  "private": false
+}
