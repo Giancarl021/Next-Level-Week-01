@@ -1,9 +1,9 @@
 import express from 'express';
 
+import routes from './routes';
+
 const app = express();
 
-app.get('/users', () => {
-    console.log('Users list');
-});
+app.use(routes);
 
 export default app;
