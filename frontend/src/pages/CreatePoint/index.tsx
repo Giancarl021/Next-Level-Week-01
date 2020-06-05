@@ -1,9 +1,11 @@
-import React, { useEffect, useState, ChangeEvent } from 'react';
-import { Link } from 'react-router-dom';
+import React, { useEffect, useState, ChangeEvent, FormEvent } from 'react';
+import { Link, useHistory } from 'react-router-dom';
 import { FiArrowLeft } from 'react-icons/fi';
 import { Map, TileLayer, Marker } from 'react-leaflet';
+import { LeafletMouseEvent } from 'leaflet';
 import axios from 'axios';
 import api from '../../services/api';
+import Swal from 'sweetalert2';
 
 import './styles.css';
 import logo from '../../assets/logo.svg';
@@ -39,6 +41,17 @@ interface IBGECityResponse {
     }
 }
 
+interface MapPosition {
+    latitude: number;
+    longitude: number;
+}
+
+interface FormData {
+    name: string;
+    email: string;
+    whatsapp: string;
+}
+
 const CreatePoint: React.FC = () => {
 
     const [items, setItems] = useState<Item[]>([]);
@@ -46,6 +59,22 @@ const CreatePoint: React.FC = () => {
     const [cities, setCities] = useState<string[]>([]);
     const [selectedUf, setSelectedUf] = useState('null');
     const [selectedCity, setSelectedCity] = useState('null');
+    const [initialPosition, setInitialPosition] = useState<MapPosition>({
+        latitude: 0,
+        longitude: 0
+    });
+    const [selectedPosition, setSelectedPosition] = useState<MapPosition>({
+        latitude: 0,
+        longitude: 0
+    });
+    const [formData, setFormData] = useState<FormData>({
+        name: '',
+        email: '',
+        whatsapp: ''
+    });
+    const [selectedItems, setSelectedItems] = useState<number[]>([]);
+
+    const history = useHistory();
 
     useEffect(() => {
         api
@@ -75,12 +104,83 @@ const CreatePoint: React.FC = () => {
             });
     }, [selectedUf]);
 
+    useEffect(() => {
+        navigator.geolocation.getCurrentPosition(data => {
+            const {
+                latitude,
+                longitude
+            } = data.coords;
+            setInitialPosition({
+                latitude,
+                longitude
+            });
+        });
+    }, []);
+
     function handleSelectUf(event: ChangeEvent<HTMLSelectElement>) {
         setSelectedUf(event.target.value);
     }
 
     function handleSelectCity(event: ChangeEvent<HTMLSelectElement>) {
         setSelectedCity(event.target.value);
+    }
+
+    function handleMapClick(event: LeafletMouseEvent) {
+        setSelectedPosition({
+            latitude: event.latlng.lat,
+            longitude: event.latlng.lng
+        })
+    }
+
+    function handleInputChange(event: ChangeEvent<HTMLInputElement>) {
+        setFormData({
+            ...formData,
+            [event.target.name]: event.target.value
+        })
+    }
+
+    function handleSelectItem(id: number) {
+        if(selectedItems.includes(id)) {
+            setSelectedItems(selectedItems.filter(item => item !== id))
+        } else {
+            setSelectedItems([ ...selectedItems, id]);
+        }
+    }
+
+    async function handleSubmit(event: FormEvent) {
+        event.preventDefault();
+
+        const { name, email, whatsapp } = formData;
+        const uf = selectedUf;
+        const city = selectedCity;
+        const { latitude, longitude } = selectedPosition;
+        const items = selectedItems;
+        const data = {
+            name,
+            email,
+            whatsapp,
+            uf,
+            city,
+            latitude,
+            longitude,
+            items
+        };
+
+        try {
+            await api.post('points', data);
+            Swal.fire({
+                title: 'Ponto de Coleta criado',
+                icon: 'success'
+            });
+            history.push('/');
+        } catch (err) {
+            Swal.fire({
+                title: 'Erro!',
+                text: err.response.data.message,
+                icon: 'error'
+              });
+        }
+        
     }
 
     return (
@@ -92,7 +192,7 @@ const CreatePoint: React.FC = () => {
                 Voltar para home
             </Link>
             </header>
-            <form>
+            <form onSubmit={handleSubmit}>
                 <h1>Cadastro do <br /> Ponto de Coleta</h1>
 
                 <fieldset>
@@ -106,6 +206,7 @@ const CreatePoint: React.FC = () => {
                             type="text"
                             name="name"
                             id="name"
+                            onChange={handleInputChange}
                         />
                     </div>
 
@@ -116,6 +217,7 @@ const CreatePoint: React.FC = () => {
                                 type="text"
                                 name="email"
                                 id="email"
+                                onChange={handleInputChange}
                             />
                         </div>
                         <div className="field">
@@ -124,6 +226,7 @@ const CreatePoint: React.FC = () => {
                                 type="text"
                                 name="whatsapp"
                                 id="whatsapp"
+                                onChange={handleInputChange}
                             />
                         </div>
                     </div>
@@ -134,13 +237,13 @@ const CreatePoint: React.FC = () => {
                         <span>Selectione o endereço no mapa</span>
                     </legend>
 
-                    <Map center={[-29.9448131, -50.9810385]} zoom={15}>
+                    <Map center={[initialPosition.latitude, initialPosition.longitude]} zoom={15} onClick={handleMapClick}>
                         <TileLayer
                             attribution='&amp;copy <a href="http://osm.org/copyright">OpenStreetMap</a> contributors'
                             url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
                         />
 
-                        <Marker position={[-29.9448131, -50.9810385]} />
+                        <Marker position={[selectedPosition.latitude, selectedPosition.longitude]} />
                     </Map>
 
                     <div className="field-group">
@@ -183,7 +286,11 @@ const CreatePoint: React.FC = () => {
                     <ul className="items-grid">
                         {
                             items.map(item => (
-                                <li key={item.id}>
+                                <li
+                                    className={selectedItems.includes(item.id) ? 'selected' : ''}
+                                    key={item.id}
+                                    onClick={() => handleSelectItem(item.id)}
+                                >
                                     <img src={item.image_url} alt={item.title} />
                                     <span>{item.title}</span>
                                 </li>
