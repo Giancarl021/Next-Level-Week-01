@@ -1,12 +1,17 @@
 import { celebrate, Joi, Segments } from 'celebrate';
 
+const options = {
+    abortEarly: false
+};
+
 class PointValidator {
+
     show() {
         return celebrate({
             [Segments.PARAMS]: Joi.object().keys({
                 id: Joi.number().required()
             })
-        });
+        }, options);
     }
 
     index() {
@@ -16,7 +21,7 @@ class PointValidator {
                 uf: Joi.string().required(),
                 items: Joi.string().required()
             })
-        });
+        }, options);
     }
 
     create() {
@@ -31,7 +36,7 @@ class PointValidator {
                 uf: Joi.string().length(2).required(),
                 items: Joi.string().required()
             })
-        });
+        }, options);
     }
 }
 
