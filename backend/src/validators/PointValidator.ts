@@ -29,8 +29,7 @@ class PointValidator {
                 longitude: Joi.number().required(),
                 city: Joi.string().required(),
                 uf: Joi.string().length(2).required(),
-                items: Joi.array().required(),
-                // image: Joi.binary().required()
+                items: Joi.string().required()
             })
         });
     }
