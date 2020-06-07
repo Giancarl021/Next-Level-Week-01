@@ -1,0 +1,1 @@
+Pasta contendo imagens dos estabelecimentos.

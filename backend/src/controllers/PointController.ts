@@ -1,6 +1,6 @@
 import { Request, Response } from 'express';
 import knex from '../database/connection';
-
+import { address } from 'ip';
 class PointController {
 
     async show(request: Request, response: Response) {
@@ -9,6 +9,8 @@ class PointController {
         const point = await knex('point')
             .where('id', id)
             .first();
+
+        point.image = `http://${address()}:3333/uploads/points/` + point.image;
 
         if (!point) {
             return response.status(400).json({
@@ -33,12 +35,12 @@ class PointController {
 
         const parsed: any = {};
 
-        for(const item of params) {
-            if(data.hasOwnProperty(item)) {
+        for (const item of params) {
+            if (data.hasOwnProperty(item)) {
                 parsed[item] = String(data[item])
                     .split(',')
                     .map(i => i.trim());
-                if(item === 'items') {
+                if (item === 'items') {
                     parsed[item] = parsed[item].map((i: String) => Number(i));
                 }
             } else {
@@ -54,7 +56,12 @@ class PointController {
             .distinct()
             .select('point.*');
 
-        return response.json(points);
+        const serializedPoints = points.map((point: any) => ({
+            ...point,
+            image: `http://${address()}:3333/uploads/points/` + point.image
+        }));
+
+        return response.json(serializedPoints);
     }
 
     async create(request: Request, response: Response) {
@@ -76,25 +83,30 @@ class PointController {
                 name,
                 email,
                 whatsapp,
-                latitude,
-                longitude,
+                latitude: Number(latitude),
+                longitude: Number(longitude),
                 city,
                 uf,
-                image: 'https://images.unsplash.com/photo-1542838132-92c53300491e?ixlib=rb-1.2.1&ixid=eyJhcHBfaWQiOjEyMDd9&auto=format&fit=crop&w=400&q=60'
+                image: request.file.filename
             };
 
             const [point_id] = await trx('point').insert(point);
 
-            const pointItems = items.map((id: number) => {
-                return {
-                    item_id: id,
-                    point_id
-                }
-            });
+            const pointItems = items
+                .split(',')
+                .map((item: string) => Number(item.trim()))
+                .map((id: number) => {
+                    return {
+                        item_id: id,
+                        point_id
+                    }
+                });
 
             await trx('point_item').insert(pointItems);
 
             await trx.commit();
+
+            point.image = `http://${address()}:3333/uploads/points/` + point.image;
 
             return response.json({
                 id: point_id,
